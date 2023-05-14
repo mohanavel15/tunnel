@@ -1,3 +1,5 @@
+mod gateway;
+
 use clap::{Parser, Subcommand, CommandFactory};
 
 #[derive(Parser)]
@@ -23,7 +25,8 @@ enum Commands {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
@@ -32,6 +35,7 @@ fn main() {
         }
         Some(Commands::Tcp { port }) => {
             println!("forwarding tcp connections to {}", port);
+            gateway::start_tcp_tunnel(*port).await;
         }
         Some(Commands::Udp { port }) => {
             println!("forwarding udp connections to {}", port);
