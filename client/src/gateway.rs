@@ -7,20 +7,14 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use serde::{Serialize, Deserialize};
-use serde_json::{json, from_slice};
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Data {
-    connection_id: String,
-    data: Vec<u8>,
-}
+use models::TunnelMessage;
 
 pub async fn start_tcp_tunnel(port: u16) {
     let (ws, _) = connect_async("ws://localhost:3000/tcp").await.unwrap();
     let (mut write, mut read) = ws.split();
     let (tx, mut rx) = unbounded_channel();
-    let connections = Arc::new(Mutex::new(HashMap::<String, UnboundedSender<Data>>::new()));
+    let connections = Arc::new(Mutex::new(HashMap::<String, UnboundedSender<TunnelMessage>>::new()));
 
     loop {
         tokio::select! {
@@ -28,8 +22,8 @@ pub async fn start_tcp_tunnel(port: u16) {
                 match result {
                     Some(Ok(message)) => {
                         match message {
-                            Message::Binary(bytes) => {
-                                let message: Data = from_slice(&bytes).unwrap();
+                            Message::Text(json_message) => {
+                                let message = TunnelMessage::deserialize(json_message);
                                 let mut connections = connections.lock().await;
                                 let sock_tx = connections.get(&message.connection_id);
                                 let stx = match sock_tx {
@@ -59,8 +53,7 @@ pub async fn start_tcp_tunnel(port: u16) {
             message = rx.recv() => {
                 match message {
                     Some(msg) => {
-                        let bytes = json!(msg).to_string().as_bytes().to_vec();
-                        write.send(Message::Binary(bytes)).await.unwrap();
+                        write.send(Message::Text(msg.serialize())).await.unwrap();
                     },
                     None => {}
                 }
@@ -69,7 +62,7 @@ pub async fn start_tcp_tunnel(port: u16) {
     }
 }
 
-async fn connect_tcp(port: u16, connection_id: String, mut rx: UnboundedReceiver<Data>, tx: UnboundedSender<Data>) {
+async fn connect_tcp(port: u16, connection_id: String, mut rx: UnboundedReceiver<TunnelMessage>, tx: UnboundedSender<TunnelMessage>) {
     let mut stream = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
     
     let (read, write) = stream.split();
@@ -90,12 +83,8 @@ async fn connect_tcp(port: u16, connection_id: String, mut rx: UnboundedReceiver
                     Ok(()) => {
                         let n = read.try_read(&mut buf).unwrap();
                         let bytes = buf[0..n].to_vec();
-                        let data = Data{
-                            connection_id: connection_id.clone(),
-                            data: bytes,
-                        };
-
-                        tx.send(data).unwrap();
+                        let tunnel_message = TunnelMessage::new(connection_id.clone(), bytes);
+                        tx.send(tunnel_message).unwrap();
                     }
                     Err(_) => {}
                 }
