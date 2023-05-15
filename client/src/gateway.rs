@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 use models::TunnelMessage;
 
 pub async fn start_tcp_tunnel(port: u16) {
-    let (ws, _) = connect_async("ws://localhost:3000/tcp").await.unwrap();
+    let (ws, _) = connect_async("ws://localhost:3000/tunnel/tcp").await.unwrap();
     let (mut write, mut read) = ws.split();
     let (tx, mut rx) = unbounded_channel();
     let connections = Arc::new(Mutex::new(HashMap::<String, UnboundedSender<TunnelMessage>>::new()));
@@ -66,9 +66,6 @@ async fn connect_tcp(port: u16, connection_id: String, mut rx: UnboundedReceiver
     let mut stream = TcpStream::connect(("127.0.0.1", port)).await.unwrap();
     
     let (read, write) = stream.split();
-
-    let mut buf = [0; 1024];
-    
     loop {
         tokio::select! {
             data = rx.recv() => {
@@ -81,10 +78,13 @@ async fn connect_tcp(port: u16, connection_id: String, mut rx: UnboundedReceiver
             result = read.readable() => {
                 match result {
                     Ok(()) => {
+                        let mut buf = [0; 1024];
                         let n = read.try_read(&mut buf).unwrap();
                         let bytes = buf[0..n].to_vec();
-                        let tunnel_message = TunnelMessage::new(connection_id.clone(), bytes);
-                        tx.send(tunnel_message).unwrap();
+                        if bytes.len() > 0 {
+                            let tunnel_message = TunnelMessage::new(connection_id.clone(), bytes);
+                            tx.send(tunnel_message).unwrap();
+                        }
                     }
                     Err(_) => {}
                 }
