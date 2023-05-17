@@ -2,10 +2,13 @@
 members = [
     "client",
     "server",
-    "models"
+    "models",
+    "codec",
 ]
 
 [workspace.dependencies]
 actix = "0.13.0"
 tokio = { version = "1.28.1", features = ["full"] }
 futures-util = "0.3.28"
+actix-codec = "0.5.1"
+tokio-util = "0.7.8"

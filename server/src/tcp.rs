@@ -1,12 +1,11 @@
 use std::io;
 use actix::{Actor, Context, Addr, StreamHandler, Message, Handler, AsyncContext, ActorContext, Running, io::{FramedWrite, WriteHandler}};
-use actix_web::web::{BytesMut, BufMut};
-use actix_codec::{Decoder, Encoder};
 use models::TunnelMessage;
 use tokio::io::{split, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::FramedRead;
 use uuid::Uuid;
+use codec::TcpCodec;
 
 use crate::ws::WsConn;
 
@@ -59,32 +58,6 @@ pub async fn start_tcp_server(port: u16, ws_addr: Addr<WsConn>) {
             let framed_write = FramedWrite::new(write, TcpCodec{}, ctx);
             TcpConn::new(id, ws_addr.clone(), framed_write)
         });
-    }
-}
-
-struct TcpCodec {}
-
-impl Encoder<Vec<u8>> for TcpCodec {
-    type Error = io::Error;
-    fn encode(&mut self, item: Vec<u8>, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let buffer = item.as_slice();
-        dst.put_slice(buffer);
-        Ok(())
-    }
-}
-
-impl Decoder for TcpCodec {
-    type Item = Vec<u8>;
-    type Error = io::Error;
-    
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let buffer = src.to_vec();
-        src.clear();
-        if buffer.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(buffer))
-        }
     }
 }
 
