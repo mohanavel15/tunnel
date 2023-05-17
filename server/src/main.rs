@@ -17,7 +17,7 @@ pub struct AppState {
     ports: Arc<Mutex<Vec<u16>>>,
 }
 
-#[actix::main]
+#[tokio::main]
 async fn main() {
     let public_host = env::var("PUBLIC_HOST");
     if public_host.is_err() {
@@ -49,7 +49,7 @@ async fn main() {
 
     let tunnel_port_range = tunnel_port_range.unwrap();
     let tunnel_port_range = tunnel_port_range
-        .split("-")
+        .split('-')
         .filter(|s| !s.is_empty())
         .map(|p| {
             p.parse::<u16>().unwrap_or_else(|_| {
@@ -65,7 +65,7 @@ async fn main() {
     }
 
     let ports = (tunnel_port_range[0]..tunnel_port_range[1] + 1).collect::<Vec<_>>();
-    if ports.len() == 0 {
+    if ports.is_empty() {
         println!("Zero available tunnel ports");
         exit(1);
     }
@@ -84,7 +84,7 @@ async fn main() {
     })
     .bind(("0.0.0.0", port))
     .unwrap_or_else(|e| {
-        println!("error: {}", e.to_string());
+        println!("error: {e}");
         exit(1)
     })
     .run()
@@ -98,7 +98,5 @@ async fn index() -> impl Responder {
 }
 
 pub async fn ws_tcp(req: HttpRequest, stream: web::Payload, app_state: web::Data<AppState>) -> Result<HttpResponse, Error> {
-    let connections = Arc::new(Mutex::new(HashMap::new()));
-    let resp = start(WsConn { tunnel_type: TunnelType::TCP, app_state, connections }, &req, stream); 
-    resp
+    start(WsConn { tunnel_type: TunnelType::TCP, app_state, tcp_connections: HashMap::new() }, &req, stream)
 }
