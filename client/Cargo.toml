@@ -6,8 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+actix.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
 clap = { version = "4.2.7", features = ["derive"] }
-tokio = { version = "1.28.1", features = ["full"] }
 tokio-tungstenite = "0.18.0"
-futures-util = "0.3.28"
 models = { path = "../models" }

@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use actix::Message;
 
 pub enum TunnelType {
     TCP,
@@ -6,6 +7,8 @@ pub enum TunnelType {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[derive(Message)]
+#[rtype(result = "()")]
 pub struct TunnelMessage {
     pub connection_id: String,
     pub data: Vec<u8>,
@@ -17,12 +20,10 @@ impl TunnelMessage {
     }
 
     pub fn serialize(&self) -> String {
-        let json_message = serde_json::to_string(self).unwrap();
-        json_message
+        serde_json::to_string(self).unwrap()
     }
 
     pub fn deserialize(json_message: String) -> Self {
-        let message: Self = serde_json::from_str(&json_message).unwrap();
-        message
+        serde_json::from_str(&json_message).unwrap()
     }
 }

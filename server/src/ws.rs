@@ -1,6 +1,6 @@
 use actix_web::web;
 use actix_web_actors::ws;
-use actix::{Actor, spawn, StreamHandler, AsyncContext, Handler, Addr, Message};
+use actix::{Actor, spawn, StreamHandler, AsyncContext, Handler, Addr};
 
 use crate::AppState;
 use crate::tcp::{TcpConn, start_tcp_server};
@@ -31,7 +31,6 @@ impl Actor for WsConn {
 
         match self.tunnel_type {
             TunnelType::TCP => _ = spawn(async move { 
-                println!("starting future");
                 start_tcp_server(port, addr).await;
             }),
             TunnelType::UDP => {}
@@ -52,7 +51,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
                 match self.tunnel_type {
                     TunnelType::TCP => {
                         if let Some(client_addr) = self.tcp_connections.get(&tunnel_message.connection_id) {
-                            client_addr.do_send(WsMessage(tunnel_message.serialize()));
+                            client_addr.do_send(tunnel_message);
                         }
                     },
                     TunnelType::UDP => {}
@@ -63,15 +62,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
     }
 }
 
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct WsMessage(pub String);
-
-impl Handler<WsMessage> for WsConn {
+impl Handler<TunnelMessage> for WsConn {
     type Result = ();
 
-    fn handle(&mut self, msg: WsMessage, ctx: &mut ws::WebsocketContext<WsConn>) {
-        println!("sending msg");
-        ctx.text(msg.0);
+    fn handle(&mut self, msg: TunnelMessage, ctx: &mut ws::WebsocketContext<WsConn>) {
+        ctx.text(msg.serialize());
     }
 }
