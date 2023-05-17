@@ -1,6 +1,6 @@
 use actix_web::web;
 use actix_web_actors::ws;
-use actix::{Actor, StreamHandler, AsyncContext, Handler, Addr, Message};
+use actix::{Actor, spawn, StreamHandler, AsyncContext, Handler, Addr, Message};
 
 use crate::AppState;
 use crate::tcp::{TcpConn, start_tcp_server};
@@ -30,7 +30,7 @@ impl Actor for WsConn {
         let addr = ctx.address();
 
         match self.tunnel_type {
-            TunnelType::TCP => _ = tokio::spawn(async move { 
+            TunnelType::TCP => _ = spawn(async move { 
                 println!("starting future");
                 start_tcp_server(port, addr).await;
             }),

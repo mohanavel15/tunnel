@@ -88,6 +88,7 @@ impl Decoder for TcpCodec {
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         println!("tcp decode");
         let buffer = src.to_vec();
+        src.clear();
         if buffer.is_empty() {
             Ok(None)
         } else {
