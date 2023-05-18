@@ -9,6 +9,8 @@ edition = "2021"
 actix.workspace = true
 tokio.workspace = true
 futures-util.workspace = true
+tokio-util.workspace = true
 clap = { version = "4.2.7", features = ["derive"] }
 tokio-tungstenite = "0.18.0"
 models = { path = "../models" }
+codec = { path="../codec" }
