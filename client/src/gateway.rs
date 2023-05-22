@@ -56,6 +56,15 @@ pub async fn start_tcp_tunnel(port: u16) {
                                             addr.do_send(tunnel_message);
                                         }
                                     },
+                                    WsMessage::Error(e) => {
+                                        if e == "No available port" {
+                                            println!("Server is full. try again later");
+                                            break
+                                        } else {
+                                            println!("unknown error: {}", e);
+                                            break
+                                        }
+                                    }
                                     _ => println!("got unexpected msg: {:?}", message),
                                 }
                             },

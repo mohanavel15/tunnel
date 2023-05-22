@@ -1,6 +1,6 @@
 use std::io;
 use tokio::{net::TcpStream, sync::mpsc::UnboundedSender};
-use actix::{Actor, Context, StreamHandler, Running, io::{FramedWrite, WriteHandler}, Addr, Handler, ActorContext, Message};
+use actix::{Actor, Context, StreamHandler, io::{FramedWrite, WriteHandler}, Addr, Handler, ActorContext, Message};
 use models::TunnelMessage;
 use tokio::io::{split, WriteHalf};
 use tokio_util::codec::FramedRead;

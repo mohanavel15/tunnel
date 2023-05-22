@@ -6,7 +6,6 @@ use actix_web_actors::ws::start;
 use actix_web::web::Data;
 use actix_web::{get, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
 
-use std::collections::HashMap;
 use std::env;
 use std::process::exit;
 use std::sync::{Arc, Mutex};
@@ -74,11 +73,11 @@ async fn main() {
     println!("Public host on http://{}:{}", public_host, port);
     println!("Available tunnel ports {}", ports.len());
 
+    let ports = Arc::new(Mutex::new(ports));
+
     HttpServer::new(move || {
         App::new()
-            .app_data(Data::new(AppState {
-                ports: Arc::new(Mutex::new(ports.clone())),
-            }))
+            .app_data(Data::new(AppState { ports: ports.clone() }))
             .service(index)
             .route("/tunnel/tcp", web::get().to(ws_tcp))
     })
@@ -98,5 +97,6 @@ async fn index() -> impl Responder {
 }
 
 pub async fn ws_tcp(req: HttpRequest, stream: web::Payload, app_state: web::Data<AppState>) -> Result<HttpResponse, Error> {
-    start(WsConn { tunnel_type: TunnelType::TCP, app_state, tcp_connections: HashMap::new() }, &req, stream)
+    let ws_conn = WsConn::new(TunnelType::TCP, app_state.ports.clone());
+    start(ws_conn, &req, stream)
 }

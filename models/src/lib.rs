@@ -49,7 +49,8 @@ pub enum WsMessage {
     Ready(WsReady),
     Connect(String),
     Disconnect(String),
-    Message(TunnelMessage)
+    Message(TunnelMessage),
+    Error(String)
 }
 
 impl WsMessage {
