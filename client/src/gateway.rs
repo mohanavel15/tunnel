@@ -2,15 +2,14 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 use actix::Addr;
-use tokio::sync::mpsc::{unbounded_channel};
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::Mutex;
 
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
 
-use models::TunnelMessage;
-
-use crate::tcp::{TcpConn, tcp_connect};
+use models::{WsMessage, TunnelType};
+use crate::tcp::{TcpConn, tcp_connect, Stop};
 
 pub async fn start_tcp_tunnel(port: u16) {
     let (ws, _) = connect_async("ws://localhost:3000/tunnel/tcp").await.unwrap();
@@ -26,19 +25,39 @@ pub async fn start_tcp_tunnel(port: u16) {
                     Some(Ok(message)) => {
                         match message {
                             Message::Text(json_message) => {
-                                let message = TunnelMessage::deserialize(json_message);
-                                let mut connections = connections.lock().await;
-                                let tcp_addr = connections.get(&message.connection_id);
-                                let stx = match tcp_addr {
-                                    Some(addr) => addr.clone(),
-                                    None => { 
-                                        let addr = tcp_connect(port, message.connection_id.clone(), tx.clone()).await;
-                                        connections.insert(message.connection_id.clone(), addr.clone());
-                                        addr
+                                let message = WsMessage::deserialize(json_message);
+                                match message {
+                                    WsMessage::InvaildSession => {
+                                        break
                                     },
-                                };
-
-                                stx.do_send(message);
+                                    WsMessage::Ready(r) => {
+                                        match r.protocal {
+                                            TunnelType::TCP => println!("tcp://{}:{}", r.ip, r.port),
+                                            TunnelType::UDP => println!("udp://{}:{}", r.ip, r.port),
+                                        }
+                                    },
+                                    WsMessage::Connect(connection_id) => {
+                                        println!("connecting: {}", connection_id);
+                                        let mut connections = connections.lock().await;
+                                        let addr = tcp_connect(port, connection_id.clone(), tx.clone()).await;
+                                        connections.insert(connection_id, addr);
+                                    },
+                                    WsMessage::Disconnect(connection_id) => {
+                                        println!("disconnecting: {}", connection_id);
+                                        let mut connections = connections.lock().await;
+                                        if let Some(addr) = connections.get(&connection_id) {
+                                            addr.do_send(Stop{});
+                                            connections.remove(&connection_id);
+                                        }
+                                    },
+                                    WsMessage::Message(tunnel_message) => {
+                                        let connections = connections.lock().await;
+                                        if let Some(addr) = connections.get(&tunnel_message.connection_id) {
+                                            addr.do_send(tunnel_message);
+                                        }
+                                    },
+                                    _ => println!("got unexpected msg: {:?}", message),
+                                }
                             },
                             Message::Close(_) => {},
                             _ => {}

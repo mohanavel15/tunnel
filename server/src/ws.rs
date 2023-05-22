@@ -3,10 +3,10 @@ use actix_web_actors::ws;
 use actix::{Actor, spawn, StreamHandler, AsyncContext, Handler, Addr};
 
 use crate::AppState;
-use crate::tcp::{TcpConn, start_tcp_server};
+use crate::tcp::{TcpConn, start_tcp_server, TcpConnect, TcpDiconnect};
 
 use std::collections::HashMap;
-use models::{TunnelMessage, TunnelType};
+use models::{TunnelMessage, TunnelType, WsMessage};
 
 pub struct WsConn {
     pub tunnel_type: TunnelType,
@@ -66,6 +66,6 @@ impl Handler<TunnelMessage> for WsConn {
     type Result = ();
 
     fn handle(&mut self, msg: TunnelMessage, ctx: &mut ws::WebsocketContext<WsConn>) {
-        ctx.text(msg.serialize());
+        ctx.text(WsMessage::Message(msg).serialize());
     }
 }

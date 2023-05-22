@@ -1,6 +1,6 @@
 use std::io;
 use actix::{Actor, Context, Addr, StreamHandler, Message, Handler, AsyncContext, ActorContext, Running, io::{FramedWrite, WriteHandler}};
-use models::TunnelMessage;
+use models::{TunnelMessage, WsMessage};
 use tokio::io::{split, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::FramedRead;
@@ -71,8 +71,9 @@ pub struct TcpConnect {
 impl Handler<TcpConnect> for WsConn {
     type Result = ();
 
-    fn handle(&mut self, msg: TcpConnect, _ctx: &mut Self::Context) {
-        self.tcp_connections.insert(msg.id, msg.addr);
+    fn handle(&mut self, msg: TcpConnect, ctx: &mut Self::Context) {
+        self.tcp_connections.insert(msg.id.clone(), msg.addr);
+        ctx.text(WsMessage::Connect(msg.id).serialize());
     }
 }
 
@@ -85,8 +86,9 @@ pub struct TcpDiconnect {
 impl Handler<TcpDiconnect> for WsConn {
     type Result = ();
 
-    fn handle(&mut self, msg: TcpDiconnect, _ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: TcpDiconnect, ctx: &mut Self::Context) {
         self.tcp_connections.remove(&msg.id);
+        ctx.text(WsMessage::Disconnect(msg.id).serialize());
     }
 }
 

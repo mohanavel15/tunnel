@@ -1,6 +1,6 @@
 use std::io;
 use tokio::{net::TcpStream, sync::mpsc::UnboundedSender};
-use actix::{Actor, Context, StreamHandler, Running, io::{FramedWrite, WriteHandler}, Addr, Handler};
+use actix::{Actor, Context, StreamHandler, Running, io::{FramedWrite, WriteHandler}, Addr, Handler, ActorContext, Message};
 use models::TunnelMessage;
 use tokio::io::{split, WriteHalf};
 use tokio_util::codec::FramedRead;
@@ -20,18 +20,6 @@ impl TcpConn {
 
 impl Actor for TcpConn{
     type Context = Context<TcpConn>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        // let result = self.ws_addr.try_send(TcpConnect { id: self.id.clone(), addr: ctx.address() });
-        // if let Err(_e) = result {
-        //     ctx.stop();
-        // }
-    }
-
-    fn stopping(&mut self, _ctx: &mut Self::Context) -> Running {
-        // self.ws_addr.do_send(TcpDiconnect { id: self.id.clone() });
-        Running::Stop
-    }
 }
 
 impl StreamHandler<Result<Vec<u8>, io::Error>> for TcpConn {
@@ -49,6 +37,18 @@ impl Handler<TunnelMessage> for TcpConn {
 
     fn handle(&mut self, msg: TunnelMessage, _ctx: &mut Self::Context) {
         self.framed_write.write(msg.data)
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Stop {}
+
+impl Handler<Stop> for TcpConn {
+    type Result = ();
+
+    fn handle(&mut self, _msg: Stop, ctx: &mut Self::Context) -> Self::Result {
+        ctx.stop()
     }
 }
 
